@@ -7,9 +7,13 @@ from singer_sdk import typing as th  # JSON schema typing helpers
 
 from tap_aws_cost_explorer.streams import (
     CostAndUsageWithResourcesStream,
+    CostsByServicesStream,
+    CostsByUsageTypeStream
 )
 STREAM_TYPES = [
     CostAndUsageWithResourcesStream,
+    CostsByServicesStream,
+    CostsByUsageTypeStream
 ]
 
 
