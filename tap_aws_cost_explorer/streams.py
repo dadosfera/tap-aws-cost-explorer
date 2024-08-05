@@ -8,6 +8,9 @@ import pendulum
 from singer_sdk import typing as th  # JSON Schema typing helpers
 
 from tap_aws_cost_explorer.client import AWSCostExplorerStream
+import singer
+
+LOGGER = singer.get_logger()
 
 class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
     """Define custom stream."""
@@ -29,6 +32,8 @@ class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
         return th.cast(datetime.datetime, pendulum.parse(self.config["end_date"]))
 
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
+
+        LOGGER.info('Starting incremental sync for %s', self.name)
         """Return a generator of row-type dictionary objects."""
         next_page = True
         start_date = self.get_starting_timestamp(context)
@@ -47,8 +52,8 @@ class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
 
         next_page = response.get("NextPageToken")
         data.extend(response['ResultsByTime'])
-        count+=count
-        print(f'count -> {count}')
+        count+=1
+        LOGGER.info(f'Request: {count}')
         while next_page:
             response = self.conn.get_cost_and_usage(
                 TimePeriod={
@@ -61,10 +66,10 @@ class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
             )
             next_page = response.get("NextPageToken")
             data.extend(response['ResultsByTime'])
-            count+=count
-            print(f'count -> {count}')
+            count+=1
+            LOGGER.info(f'Request: {count}')
 
-        print(f"data -> {data}")
+        LOGGER.info(f'Data: {data}')
 
         for row in data:
             for k, v in row.get("Total").items():
@@ -99,9 +104,39 @@ class CostsByServicesStream(AWSCostExplorerStream):
 
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
         """Return a generator of row-type dictionary objects."""
+        LOGGER.info('Starting incremental sync for %s', self.name)
         next_page = True
         start_date = self.get_starting_timestamp(context)
         end_date = self._get_end_date()
+        data = []
+        count = 0
+
+        response = self.conn.get_cost_and_usage(
+                TimePeriod={
+                    'Start': start_date.strftime("%Y-%m-%d"),
+                    'End': end_date.strftime("%Y-%m-%d")
+                },
+                Granularity=self.config.get("granularity"),
+                Metrics= self.config.get("metrics"),
+                Filter= {
+                    'Dimensions':{
+                        'Key': 'RECORD_TYPE',
+                        'Values': self.config.get("record_types"),
+                    }
+                },
+                GroupBy=[
+                    {
+                        'Type': 'DIMENSION',
+                        'Key': 'SERVICE'
+                    }
+                ]
+        )
+        next_page = response.get("NextPageToken")
+        data.extend(response['ResultsByTime'])
+
+        count+=1
+        LOGGER.info(f'Request: {count}')
+        
 
         while next_page:
             response = self.conn.get_cost_and_usage(
@@ -122,22 +157,28 @@ class CostsByServicesStream(AWSCostExplorerStream):
                         'Type': 'DIMENSION',
                         'Key': 'SERVICE'
                     }
-                ]
+                ],
+                NextPageToken=next_page
             )
 
             next_page = response.get("NextPageToken")
+            data.extend(response['ResultsByTime'])
+            count+=1
+            LOGGER.info(f'Request: {count}')
 
-            for row in response.get("ResultsByTime"):
-                for k in row.get("Groups"):
-                    for i, j in k.get("Metrics").items():
-                        yield {
-                            "time_period_start": row.get("TimePeriod").get("Start"),
-                            "time_period_end": row.get("TimePeriod").get("End"),
-                            "metric_name": i,
-                            "amount": j.get("Amount"),
-                            "amount_unit": j.get("Unit"),
-                            "service": k.get('Keys')[0],
-                        }
+        LOGGER.info(f'Data: {data}')
+
+        for row in data:
+            for k in row.get("Groups"):
+                for i, j in k.get("Metrics").items():
+                    yield {
+                        "time_period_start": row.get("TimePeriod").get("Start"),
+                        "time_period_end": row.get("TimePeriod").get("End"),
+                        "metric_name": i,
+                        "amount": j.get("Amount"),
+                        "amount_unit": j.get("Unit"),
+                        "service": k.get('Keys')[0],
+                    }
 
 
 class CostsByUsageTypeStream(AWSCostExplorerStream):
@@ -161,10 +202,43 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
         return th.cast(datetime.datetime, pendulum.parse(self.config["end_date"]))
 
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
+        LOGGER.info('Starting incremental sync for %s', self.name)
+
         """Return a generator of row-type dictionary objects."""
         next_page = True
         start_date = self.get_starting_timestamp(context)
         end_date = self._get_end_date()
+        data = []
+        count=0
+
+        response = self.conn.get_cost_and_usage(
+                TimePeriod={
+                    'Start': start_date.strftime("%Y-%m-%d"),
+                    'End': end_date.strftime("%Y-%m-%d")
+                },
+                Granularity=self.config.get("granularity"),
+                Metrics= self.config.get("metrics"),
+                Filter= {
+                    'Dimensions':{
+                        'Key': 'RECORD_TYPE',
+                        'Values': self.config.get("record_types"),
+                    }
+                },
+                GroupBy=[
+                    {
+                        'Type': 'DIMENSION',
+                        'Key': 'USAGE_TYPE'
+                    }
+                ]
+                
+        )
+        next_page = response.get("NextPageToken")
+
+        data.extend(response['ResultsByTime'])
+
+        count+=1
+        LOGGER.info(f'Request: {count}')
+
 
         while next_page:
             response = self.conn.get_cost_and_usage(
@@ -185,19 +259,26 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                         'Type': 'DIMENSION',
                         'Key': 'USAGE_TYPE'
                     }
-                ]
+                ],
+                NextPageToken=next_page
             )
 
             next_page = response.get("NextPageToken")
+            data.extend(response['ResultsByTime'])
+            
+            count+=1
+            LOGGER.info(f'Request: {count}')
 
-            for row in response.get("ResultsByTime"):
-                for k in row.get("Groups"):
-                    for i, j in k.get("Metrics").items():
-                        yield {
-                            "time_period_start": row.get("TimePeriod").get("Start"),
-                            "time_period_end": row.get("TimePeriod").get("End"),
-                            "metric_name": i,
-                            "amount": j.get("Amount"),
-                            "amount_unit": j.get("Unit"),
-                            "usage_type": k.get('Keys')[0],
-                        }
+        LOGGER.info(f'Data: {data}')
+
+        for row in data:
+            for k in row.get("Groups"):
+                for i, j in k.get("Metrics").items():
+                    yield {
+                        "time_period_start": row.get("TimePeriod").get("Start"),
+                        "time_period_end": row.get("TimePeriod").get("End"),
+                        "metric_name": i,
+                        "amount": j.get("Amount"),
+                        "amount_unit": j.get("Unit"),
+                        "usage_type": k.get('Keys')[0],
+                    }
