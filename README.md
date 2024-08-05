@@ -40,7 +40,8 @@ After you created the desired IAM user account, you need [access keys](https://d
     "start_date": "2020-10-01",
     "end_date": "2021-09-01",
     "granularity": "DAILY",
-    "metrics": ["AmortizedCost", "BlendedCost", "NetAmortizedCost", "NetUnblendedCost", "NormalizedUsageAmount", "UnblendedCost", "UsageQuantity"]
+    "metrics": ["AmortizedCost", "BlendedCost", "NetAmortizedCost", "NetUnblendedCost", "NormalizedUsageAmount", "UnblendedCost", "UsageQuantity"],
+    "record_types": ["Usage", "Credit", "Refund", "Support Fee" ]
 }
 ```
 A bit of a run down on each of the properties:
