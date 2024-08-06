@@ -33,7 +33,7 @@ class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
 
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
 
-        LOGGER.info('Starting incremental sync for %s', self.name)
+        LOGGER.info('Starting sync for %s', self.name)
         """Return a generator of row-type dictionary objects."""
         next_page = True
         start_date = self.get_starting_timestamp(context)
@@ -104,7 +104,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
 
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
         """Return a generator of row-type dictionary objects."""
-        LOGGER.info('Starting incremental sync for %s', self.name)
+        LOGGER.info('Starting sync for %s', self.name)
         next_page = True
         start_date = self.get_starting_timestamp(context)
         end_date = self._get_end_date()
@@ -202,7 +202,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
         return th.cast(datetime.datetime, pendulum.parse(self.config["end_date"]))
 
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
-        LOGGER.info('Starting incremental sync for %s', self.name)
+        LOGGER.info('Starting sync for %s', self.name)
 
         """Return a generator of row-type dictionary objects."""
         next_page = True
