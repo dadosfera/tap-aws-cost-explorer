@@ -167,7 +167,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
                 count+=1
                 LOGGER.info(f'Request: {count}')
 
-            LOGGER.info(f'Data: {data}')
+            #LOGGER.info(f'Data: {data}')
 
             for row in data:
                 for k in row.get("Groups"):
