@@ -150,7 +150,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
                     Filter= {
                         'Dimensions':{
                             'Key': 'RECORD_TYPE',
-                            'Values': self.config.get("record_types"),
+                            'Values': [record_type],
                         }
                     },
                     GroupBy=[
@@ -254,7 +254,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                     Filter= {
                         'Dimensions':{
                             'Key': 'RECORD_TYPE',
-                            'Values': self.config.get("record_types"),
+                            'Values': [record_type],
                         }
                     },
                     GroupBy=[
