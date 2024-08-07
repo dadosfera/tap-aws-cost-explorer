@@ -95,6 +95,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
         th.Property("amount", th.StringType),
         th.Property("amount_unit", th.StringType),
         th.Property("service", th.StringType),
+        th.Property("charge_type", th.StringType),
     ).to_dict()
 
     def _get_end_date(self):
@@ -196,6 +197,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
         th.Property("amount", th.StringType),
         th.Property("amount_unit", th.StringType),
         th.Property("usage_type", th.StringType),
+        th.Property("charge_type", th.StringType),
     ).to_dict()
 
     def _get_end_date(self):
