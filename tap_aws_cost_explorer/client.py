@@ -72,4 +72,5 @@ class AWSCostExplorerStream(Stream):
         if args.state:
             state = args.state
 
+        LOGGER.info(f"State: {state}")
         return state
