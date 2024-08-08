@@ -47,11 +47,9 @@ class AWSCostExplorerStream(Stream):
 
     def _write_state_message(self):
 
-     
         if "bookmarks" not in self.state:
             self.state["bookmarks"] = {}
         
-        LOGGER.info(f"Write_bookmark Input Value: {value}")
         value =  datetime.now() - timedelta(days=7)
         LOGGER.info(f"After count write_bookmakrk -> {value}")
         value = value.strftime("%Y-%m-%d")
