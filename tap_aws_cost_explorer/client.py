@@ -51,13 +51,10 @@ class AWSCostExplorerStream(Stream):
             self.state["bookmarks"] = {}
         
         value =  datetime.now() - timedelta(days=7)
-        LOGGER.info(f"After count write_bookmakrk -> {value}")
+        
         value = value.strftime("%Y-%m-%d")
-        LOGGER.info(f"After transformation -> {value}")
-
+        
         value_dict = {"last_value": value}
-
-        LOGGER.info(f"Write_bookmark Output Value: {value}")
 
         self.state["bookmarks"][self.tap_stream_id] = value_dict
         
