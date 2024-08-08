@@ -40,8 +40,9 @@ class AWSCostExplorerStream(Stream):
         bookmarks = self.state.get("bookmarks", {})
         stream_bookmark = bookmarks.get(self.tap_stream_id, {})
         LOGGER.info("last_value:")
-        LOGGER.info(stream_bookmark["last_value"])
+        
         if "last_value" in stream_bookmark:
+            LOGGER.info(stream_bookmark["last_value"])
             return stream_bookmark["last_value"]
 
     def write_bookmark(self, value):
