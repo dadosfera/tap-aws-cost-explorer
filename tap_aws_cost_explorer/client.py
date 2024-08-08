@@ -4,10 +4,27 @@ import boto3
 
 from singer_sdk.streams.core import Stream
 from singer_sdk.tap_base import Tap
+import singer
+from datetime import datetime, timedelta
+import singer
+from singer import utils
+
+LOGGER = singer.get_logger()
+
+
+REQUIRED_CONFIG_KEYS = [
+    "access_key",
+    "secret_key",
+    "start_date",
+    "end_date",
+    "granularity",
+    "metrics",
+    "record_types"]
 
 
 class AWSCostExplorerStream(Stream):
     """Stream class for AWSCostExplorer streams."""
+
     def __init__(self, tap: Tap):
         super().__init__(tap)
         self.conn = boto3.client(
@@ -16,3 +33,38 @@ class AWSCostExplorerStream(Stream):
             aws_secret_access_key=self.config.get("secret_key"),
             aws_session_token=self.config.get("session_token"),
         )
+        self.state = self.get_state()
+
+    def get_bookmark(self):
+        if (self.state is None) or ("bookmarks" not in self.state):
+            return None
+        bookmarks = self.state.get("bookmarks", {})
+        stream_bookmark = bookmarks.get(self.tap_stream_id, {})
+
+        if "last_value" in stream_bookmark:
+            return stream_bookmark["last_value"]
+
+    def write_bookmark(self, value):
+
+        if "bookmarks" not in self.state:
+            self.state["bookmarks"] = {}
+
+        value = datetime.strptime(value, "%Y-%m-%d") - timedelta(days=7)
+
+        value = value.strftime("%Y-%m-%d")
+
+        value_dict = {"last_value": value}
+
+        self.state["bookmarks"][self.tap_stream_id] = value_dict
+        singer.write_state(self.state)
+
+    @utils.handle_top_exception(LOGGER)
+    def get_state(self):
+
+        args = utils.parse_args(REQUIRED_CONFIG_KEYS)
+
+        state = {}
+        if args.state:
+            state = args.state
+
+        return state
