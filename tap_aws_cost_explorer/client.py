@@ -48,11 +48,13 @@ class AWSCostExplorerStream(Stream):
         if "bookmarks" not in self.state:
             self.state["bookmarks"] = {}
 
+        LOGGER.info(f"Write_bookmark Input Value: {value}")
         value = datetime.strptime(value, "%Y-%m-%d") - timedelta(days=7)
 
         value = value.strftime("%Y-%m-%d")
 
         value_dict = {"last_value": value}
+        LOGGER.info(f"Write_bookmark Output Value: {value}")
 
         self.state["bookmarks"][self.tap_stream_id] = value_dict
         singer.write_state(self.state)
