@@ -194,7 +194,8 @@ class CostsByServicesStream(AWSCostExplorerStream):
                             "charge_type": record_type,
                         }
         LOGGER.info(f"End_date -> {end_date}")
-        self.write_bookmark(end_date.strftime("%Y-%m-%d"))
+        
+        #self.write_bookmark(end_date.strftime("%Y-%m-%d"))
 
 
 class CostsByUsageTypeStream(AWSCostExplorerStream):

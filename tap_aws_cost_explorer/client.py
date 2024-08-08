@@ -45,7 +45,7 @@ class AWSCostExplorerStream(Stream):
             LOGGER.info(stream_bookmark["last_value"])
             return stream_bookmark["last_value"]
 
-    def write_bookmark(self, value):
+    def _write_state_message(self, value):
 
         if "bookmarks" not in self.state:
             self.state["bookmarks"] = {}
@@ -61,6 +61,7 @@ class AWSCostExplorerStream(Stream):
         LOGGER.info(f"Write_bookmark Output Value: {value}")
 
         self.state["bookmarks"][self.tap_stream_id] = value_dict
+        
         singer.write_state(self.state)
 
     @utils.handle_top_exception(LOGGER)
