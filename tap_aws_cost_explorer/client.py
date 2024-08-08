@@ -16,7 +16,6 @@ REQUIRED_CONFIG_KEYS = [
     "access_key",
     "secret_key",
     "start_date",
-    "end_date",
     "granularity",
     "metrics",
     "record_types"]
