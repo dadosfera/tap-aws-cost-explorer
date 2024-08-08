@@ -45,13 +45,14 @@ class AWSCostExplorerStream(Stream):
             LOGGER.info(stream_bookmark["last_value"])
             return stream_bookmark["last_value"]
 
-    def _write_state_message(self, value):
+    def _write_state_message(self):
 
+     
         if "bookmarks" not in self.state:
             self.state["bookmarks"] = {}
         
         LOGGER.info(f"Write_bookmark Input Value: {value}")
-        value = datetime.strptime(value, "%Y-%m-%d") - timedelta(days=7)
+        value =  datetime.now() - timedelta(days=7)
         LOGGER.info(f"After count write_bookmakrk -> {value}")
         value = value.strftime("%Y-%m-%d")
         LOGGER.info(f"After transformation -> {value}")
