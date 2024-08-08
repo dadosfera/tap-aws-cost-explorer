@@ -12,6 +12,7 @@ import singer
 
 LOGGER = singer.get_logger()
 
+
 class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
     """Define custom stream."""
     name = "cost"
@@ -40,24 +41,28 @@ class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
         end_date = self._get_end_date()
         data = []
         count = 0
+        start_date_str = self.get_bookmark(
+        ) if self.get_bookmark() else start_date.strftime("%Y-%m-%d")
+        
 
+        LOGGER.info(f'Start Date: {start_date_str}')
         response = self.conn.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_date.strftime("%Y-%m-%d"),
-                    'End': end_date.strftime("%Y-%m-%d")
-                },
-                Granularity=self.config.get("granularity"),
-                Metrics=self.config.get("metrics"),
-            )
+            TimePeriod={
+                'Start': start_date_str,
+                'End': end_date.strftime("%Y-%m-%d")
+            },
+            Granularity=self.config.get("granularity"),
+            Metrics=self.config.get("metrics"),
+        )
 
         next_page = response.get("NextPageToken")
         data.extend(response['ResultsByTime'])
-        count+=1
+        count += 1
         LOGGER.info(f'Request: {count}')
         while next_page:
             response = self.conn.get_cost_and_usage(
                 TimePeriod={
-                    'Start': start_date.strftime("%Y-%m-%d"),
+                    'Start': start_date_str,
                     'End': end_date.strftime("%Y-%m-%d")
                 },
                 Granularity=self.config.get("granularity"),
@@ -66,10 +71,10 @@ class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
             )
             next_page = response.get("NextPageToken")
             data.extend(response['ResultsByTime'])
-            count+=1
+            count += 1
             LOGGER.info(f'Request: {count}')
 
-        #LOGGER.info(f'Data: {data}')
+        # LOGGER.info(f'Data: {data}')
 
         for row in data:
             for k, v in row.get("Total").items():
@@ -95,6 +100,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
         th.Property("amount", th.StringType),
         th.Property("amount_unit", th.StringType),
         th.Property("service", th.StringType),
+        th.Property("charge_type", th.StringType),
     ).to_dict()
 
     def _get_end_date(self):
@@ -111,17 +117,23 @@ class CostsByServicesStream(AWSCostExplorerStream):
         data = []
         count = 0
 
-        response = self.conn.get_cost_and_usage(
+        start_date_str = self.get_bookmark(
+        ) if self.get_bookmark() else start_date.strftime("%Y-%m-%d")
+
+        LOGGER.info(f'Start Date: {start_date_str}')
+
+        for record_type in self.config.get("record_types"):
+            response = self.conn.get_cost_and_usage(
                 TimePeriod={
-                    'Start': start_date.strftime("%Y-%m-%d"),
+                    'Start': start_date_str,
                     'End': end_date.strftime("%Y-%m-%d")
                 },
                 Granularity=self.config.get("granularity"),
-                Metrics= self.config.get("metrics"),
-                Filter= {
-                    'Dimensions':{
+                Metrics=self.config.get("metrics"),
+                Filter={
+                    'Dimensions': {
                         'Key': 'RECORD_TYPE',
-                        'Values': self.config.get("record_types"),
+                        'Values': [record_type]
                     }
                 },
                 GroupBy=[
@@ -130,55 +142,55 @@ class CostsByServicesStream(AWSCostExplorerStream):
                         'Key': 'SERVICE'
                     }
                 ]
-        )
-        next_page = response.get("NextPageToken")
-        data.extend(response['ResultsByTime'])
-
-        count+=1
-        LOGGER.info(f'Request: {count}')
-        
-
-        while next_page:
-            response = self.conn.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_date.strftime("%Y-%m-%d"),
-                    'End': end_date.strftime("%Y-%m-%d")
-                },
-                Granularity=self.config.get("granularity"),
-                Metrics= self.config.get("metrics"),
-                Filter= {
-                    'Dimensions':{
-                        'Key': 'RECORD_TYPE',
-                        'Values': self.config.get("record_types"),
-                    }
-                },
-                GroupBy=[
-                    {
-                        'Type': 'DIMENSION',
-                        'Key': 'SERVICE'
-                    }
-                ],
-                NextPageToken=next_page
             )
-
             next_page = response.get("NextPageToken")
             data.extend(response['ResultsByTime'])
-            count+=1
+
+            count += 1
             LOGGER.info(f'Request: {count}')
 
-        #LOGGER.info(f'Data: {data}')
+            while next_page:
+                response = self.conn.get_cost_and_usage(
+                    TimePeriod={
+                        'Start': start_date_str,
+                        'End': end_date.strftime("%Y-%m-%d")
+                    },
+                    Granularity=self.config.get("granularity"),
+                    Metrics=self.config.get("metrics"),
+                    Filter={
+                        'Dimensions': {
+                            'Key': 'RECORD_TYPE',
+                            'Values': [record_type],
+                        }
+                    },
+                    GroupBy=[
+                        {
+                            'Type': 'DIMENSION',
+                            'Key': 'SERVICE'
+                        }
+                    ],
+                    NextPageToken=next_page
+                )
 
-        for row in data:
-            for k in row.get("Groups"):
-                for i, j in k.get("Metrics").items():
-                    yield {
-                        "time_period_start": row.get("TimePeriod").get("Start"),
-                        "time_period_end": row.get("TimePeriod").get("End"),
-                        "metric_name": i,
-                        "amount": j.get("Amount"),
-                        "amount_unit": j.get("Unit"),
-                        "service": k.get('Keys')[0],
-                    }
+                next_page = response.get("NextPageToken")
+                data.extend(response['ResultsByTime'])
+                count += 1
+                LOGGER.info(f'Request: {count}')
+
+            # LOGGER.info(f'Data: {data}')
+
+            for row in data:
+                for k in row.get("Groups"):
+                    for i, j in k.get("Metrics").items():
+                        yield {
+                            "time_period_start": row.get("TimePeriod").get("Start"),
+                            "time_period_end": row.get("TimePeriod").get("End"),
+                            "metric_name": i,
+                            "amount": j.get("Amount"),
+                            "amount_unit": j.get("Unit"),
+                            "service": k.get('Keys')[0],
+                            "charge_type": record_type,
+                        }
 
 
 class CostsByUsageTypeStream(AWSCostExplorerStream):
@@ -194,6 +206,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
         th.Property("amount", th.StringType),
         th.Property("amount_unit", th.StringType),
         th.Property("usage_type", th.StringType),
+        th.Property("charge_type", th.StringType),
     ).to_dict()
 
     def _get_end_date(self):
@@ -209,19 +222,25 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
         start_date = self.get_starting_timestamp(context)
         end_date = self._get_end_date()
         data = []
-        count=0
+        count = 0
 
-        response = self.conn.get_cost_and_usage(
+        start_date_str = self.get_bookmark(
+        ) if self.get_bookmark() else start_date.strftime("%Y-%m-%d")
+        
+        LOGGER.info(f'Start Date: {start_date_str}')
+
+        for record_type in self.config.get("record_types"):
+            response = self.conn.get_cost_and_usage(
                 TimePeriod={
-                    'Start': start_date.strftime("%Y-%m-%d"),
+                    'Start': start_date_str,
                     'End': end_date.strftime("%Y-%m-%d")
                 },
                 Granularity=self.config.get("granularity"),
-                Metrics= self.config.get("metrics"),
-                Filter= {
-                    'Dimensions':{
+                Metrics=self.config.get("metrics"),
+                Filter={
+                    'Dimensions': {
                         'Key': 'RECORD_TYPE',
-                        'Values': self.config.get("record_types"),
+                        'Values': [record_type],
                     }
                 },
                 GroupBy=[
@@ -230,55 +249,56 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                         'Key': 'USAGE_TYPE'
                     }
                 ]
-                
-        )
-        next_page = response.get("NextPageToken")
 
-        data.extend(response['ResultsByTime'])
-
-        count+=1
-        LOGGER.info(f'Request: {count}')
-
-
-        while next_page:
-            response = self.conn.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_date.strftime("%Y-%m-%d"),
-                    'End': end_date.strftime("%Y-%m-%d")
-                },
-                Granularity=self.config.get("granularity"),
-                Metrics= self.config.get("metrics"),
-                Filter= {
-                    'Dimensions':{
-                        'Key': 'RECORD_TYPE',
-                        'Values': self.config.get("record_types"),
-                    }
-                },
-                GroupBy=[
-                    {
-                        'Type': 'DIMENSION',
-                        'Key': 'USAGE_TYPE'
-                    }
-                ],
-                NextPageToken=next_page
             )
-
             next_page = response.get("NextPageToken")
+
             data.extend(response['ResultsByTime'])
-            
-            count+=1
+
+            count += 1
             LOGGER.info(f'Request: {count}')
 
-        #LOGGER.info(f'Data: {data}')
+            while next_page:
+                response = self.conn.get_cost_and_usage(
+                    TimePeriod={
+                        'Start': start_date_str,
+                        'End': end_date.strftime("%Y-%m-%d")
+                    },
+                    Granularity=self.config.get("granularity"),
+                    Metrics=self.config.get("metrics"),
+                    Filter={
+                        'Dimensions': {
+                            'Key': 'RECORD_TYPE',
+                            'Values': [record_type],
+                        }
+                    },
+                    GroupBy=[
+                        {
+                            'Type': 'DIMENSION',
+                            'Key': 'USAGE_TYPE'
+                        }
+                    ],
+                    NextPageToken=next_page
+                )
 
-        for row in data:
-            for k in row.get("Groups"):
-                for i, j in k.get("Metrics").items():
-                    yield {
-                        "time_period_start": row.get("TimePeriod").get("Start"),
-                        "time_period_end": row.get("TimePeriod").get("End"),
-                        "metric_name": i,
-                        "amount": j.get("Amount"),
-                        "amount_unit": j.get("Unit"),
-                        "usage_type": k.get('Keys')[0],
-                    }
+                next_page = response.get("NextPageToken")
+                data.extend(response['ResultsByTime'])
+
+                count += 1
+                LOGGER.info(f'Request: {count}')
+
+            # LOGGER.info(f'Data: {data}')
+
+            for row in data:
+                for k in row.get("Groups"):
+                    for i, j in k.get("Metrics").items():
+                        yield {
+                            "time_period_start": row.get("TimePeriod").get("Start"),
+                            "time_period_end": row.get("TimePeriod").get("End"),
+                            "metric_name": i,
+                            "amount": j.get("Amount"),
+                            "amount_unit": j.get("Unit"),
+                            "usage_type": k.get('Keys')[0],
+                            "charge_type": record_type,
+                        }
+

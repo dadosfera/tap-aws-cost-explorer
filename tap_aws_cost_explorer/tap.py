@@ -67,6 +67,14 @@ class TapAWSCostExplorer(Tap):
                         NormalizedUsageAmount, UnblendedCost, and \
                         UsageQuantity."
         ),
+        th.Property(
+            "record_types",
+            th.ArrayType(th.StringType),
+            required=True,
+            description="Which charge type are returned in the query. Valid \
+                        values are Usage, Credit, \
+                        Refund, Support Fee."
+        ),
     ).to_dict()
 
     def discover_streams(self) -> List[Stream]:
