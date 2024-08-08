@@ -15,7 +15,7 @@ A full list of supported settings and capabilities for this
 tap is available by running:
 
 ```bash
-tap-aws-cost-explorer --about
+tap-aws-cost-explorer 
 ```
 
 ### Capabilities

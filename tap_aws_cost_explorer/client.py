@@ -40,6 +40,7 @@ class AWSCostExplorerStream(Stream):
         bookmarks = self.state.get("bookmarks", {})
         stream_bookmark = bookmarks.get(self.tap_stream_id, {})
 
+        LOGGER.info(f'stream_bookmark["last_value"] -> {stream_bookmark["last_value"]}')
         if "last_value" in stream_bookmark:
             return stream_bookmark["last_value"]
 
@@ -47,13 +48,15 @@ class AWSCostExplorerStream(Stream):
 
         if "bookmarks" not in self.state:
             self.state["bookmarks"] = {}
-
+        
         LOGGER.info(f"Write_bookmark Input Value: {value}")
         value = datetime.strptime(value, "%Y-%m-%d") - timedelta(days=7)
-
+        LOGGER.info(f"After count write_bookmakrk -> {value}")
         value = value.strftime("%Y-%m-%d")
-
+        LOGGER.info(f"After transformation -> {value}")
+        
         value_dict = {"last_value": value}
+
         LOGGER.info(f"Write_bookmark Output Value: {value}")
 
         self.state["bookmarks"][self.tap_stream_id] = value_dict
