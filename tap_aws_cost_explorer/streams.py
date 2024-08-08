@@ -85,7 +85,7 @@ class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
                     "amount": v.get("Amount"),
                     "amount_unit": v.get("Unit")
                 }
-        LOGGER.info(f"End_date -> {end_date.strftime("%Y-%m-%d")}")
+        LOGGER.info(f"End_date -> {end_date}")
         self.write_bookmark(end_date.strftime("%Y-%m-%d"))
 
 
@@ -193,7 +193,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
                             "service": k.get('Keys')[0],
                             "charge_type": record_type,
                         }
-        LOGGER.info(f"End_date -> {end_date.strftime("%Y-%m-%d")}")
+        LOGGER.info(f"End_date -> {end_date}")
         self.write_bookmark(end_date.strftime("%Y-%m-%d"))
 
 
@@ -305,6 +305,6 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                             "usage_type": k.get('Keys')[0],
                             "charge_type": record_type,
                         }
-        LOGGER.info(f"End_date -> {end_date.strftime("%Y-%m-%d")}")
+        LOGGER.info(f"End_date -> {end_date}")
 
         self.write_bookmark(end_date.strftime("%Y-%m-%d"))
