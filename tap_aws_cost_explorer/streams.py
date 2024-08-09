@@ -297,7 +297,6 @@ class CostsByServicesStream(AWSCostExplorerStream):
         else:
             data = self._sync_without_tags(start_date, end_date)
 
-        LOGGER.info(data)
         for d in data:
             for row in d['Results']:
                 for k in row.get("Groups"):
