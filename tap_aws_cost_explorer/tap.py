@@ -75,6 +75,12 @@ class TapAWSCostExplorer(Tap):
                         values are Usage, Credit, \
                         Refund, Support Fee."
         ),
+        th.Property(
+            "tag_keys",
+            th.ArrayType(th.StringType),
+            required=False,
+            description="Which tag are returned in the query."
+        ),
     ).to_dict()
 
     def discover_streams(self) -> List[Stream]:

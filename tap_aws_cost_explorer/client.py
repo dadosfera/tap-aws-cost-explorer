@@ -18,7 +18,9 @@ REQUIRED_CONFIG_KEYS = [
     "start_date",
     "granularity",
     "metrics",
-    "record_types"]
+    "record_types",
+    "tag_keys",
+]
 
 
 class AWSCostExplorerStream(Stream):
@@ -39,7 +41,6 @@ class AWSCostExplorerStream(Stream):
             return None
         bookmarks = self.state.get("bookmarks", {})
         stream_bookmark = bookmarks.get(self.tap_stream_id, {})
-        LOGGER.info("last_value:")
         
         if "last_value" in stream_bookmark:
             LOGGER.info(stream_bookmark["last_value"])
@@ -69,5 +70,4 @@ class AWSCostExplorerStream(Stream):
         if args.state:
             state = args.state
 
-        LOGGER.info(f"State: {state}")
         return state
