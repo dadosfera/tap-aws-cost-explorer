@@ -6,6 +6,7 @@ from typing import Optional, Iterable
 
 import pendulum
 from singer_sdk import typing as th  # JSON Schema typing helpers
+from singer_sdk.tap_base import Tap
 
 from tap_aws_cost_explorer.client import AWSCostExplorerStream
 import singer
@@ -92,18 +93,16 @@ class CostsByServicesStream(AWSCostExplorerStream):
     name = "costs_by_services"
     primary_keys = ["metric_name", "time_period_start"]
     replication_key = "time_period_start"
-
     schema = th.PropertiesList(
-        th.Property("time_period_start", th.DateTimeType),
-        th.Property("time_period_end", th.DateTimeType),
-        th.Property("metric_name", th.StringType),
-        th.Property("amount", th.StringType),
-        th.Property("amount_unit", th.StringType),
-        th.Property("service", th.StringType),
-        th.Property("charge_type", th.StringType),
-        th.Property("tag_key", th.StringType),
-        th.Property("tag_value", th.StringType)
-    ).to_dict()
+            th.Property("time_period_start", th.DateTimeType),
+            th.Property("time_period_end", th.DateTimeType),
+            th.Property("metric_name", th.StringType),
+            th.Property("amount", th.StringType),
+            th.Property("amount_unit", th.StringType),
+            th.Property("service", th.StringType),
+            th.Property("charge_type", th.StringType),
+        ).to_dict()
+
 
     def _get_end_date(self):
         if self.config.get("end_date") is None:
@@ -113,7 +112,10 @@ class CostsByServicesStream(AWSCostExplorerStream):
     def _sync_with_tags(self, start_date, end_date):
         """Return a generator of row-type dictionary objects."""
         LOGGER.info('Starting _sync_with_tags for %s', self.name)
-           
+        
+        self.schema.append(th.Property("tag_key", th.StringType))
+        self.schema.append(th.Property("tag_value", th.StringType))
+        
         count = 0
         data = []
 
