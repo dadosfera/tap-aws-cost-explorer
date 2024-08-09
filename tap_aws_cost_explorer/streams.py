@@ -101,7 +101,8 @@ class CostsByServicesStream(AWSCostExplorerStream):
         th.Property("amount_unit", th.StringType),
         th.Property("service", th.StringType),
         th.Property("charge_type", th.StringType),
-        th.Property("tag_keys", th.StringType)
+        th.Property("tag_key", th.StringType),
+        th.Property("tag_value", th.StringType)
     ).to_dict()
 
     def _get_end_date(self):
@@ -112,6 +113,18 @@ class CostsByServicesStream(AWSCostExplorerStream):
     def _sync_with_tags(self, start_date, end_date):
         """Return a generator of row-type dictionary objects."""
         LOGGER.info('Starting _sync_with_tags for %s', self.name)
+
+        self.schema = th.PropertiesList(
+            th.Property("time_period_start", th.DateTimeType),
+            th.Property("time_period_end", th.DateTimeType),
+            th.Property("metric_name", th.StringType),
+            th.Property("amount", th.StringType),
+            th.Property("amount_unit", th.StringType),
+            th.Property("service", th.StringType),
+            th.Property("charge_type", th.StringType),
+            th.Property("tag_key", th.StringType),
+            th.Property("tag_value", th.StringType)
+        ).to_dict()
              
         count = 0
         data = []
@@ -203,6 +216,17 @@ class CostsByServicesStream(AWSCostExplorerStream):
 
     def _sync_without_tags(self, start_date, end_date):
         """Return a generator of row-type dictionary objects."""
+
+        self.schema = th.PropertiesList(
+            th.Property("time_period_start", th.DateTimeType),
+            th.Property("time_period_end", th.DateTimeType),
+            th.Property("metric_name", th.StringType),
+            th.Property("amount", th.StringType),
+            th.Property("amount_unit", th.StringType),
+            th.Property("service", th.StringType),
+            th.Property("charge_type", th.StringType),
+        ).to_dict()
+
         LOGGER.info('Starting _sync_without_tags for %s', self.name)
 
         data = []
@@ -325,15 +349,17 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
     replication_key = "time_period_start"
 
     schema = th.PropertiesList(
-        th.Property("time_period_start", th.DateTimeType),
-        th.Property("time_period_end", th.DateTimeType),
-        th.Property("metric_name", th.StringType),
-        th.Property("amount", th.StringType),
-        th.Property("amount_unit", th.StringType),
-        th.Property("usage_type", th.StringType),
-        th.Property("charge_type", th.StringType),
-        th.Property("tag_keys", th.StringType),
-    ).to_dict()
+            th.Property("time_period_start", th.DateTimeType),
+            th.Property("time_period_end", th.DateTimeType),
+            th.Property("metric_name", th.StringType),
+            th.Property("amount", th.StringType),
+            th.Property("amount_unit", th.StringType),
+            th.Property("usage_type", th.StringType),
+            th.Property("charge_type", th.StringType),
+            th.Property("tag_key", th.StringType),
+            th.Property("tag_value", th.StringType)
+        ).to_dict()
+
 
     def _get_end_date(self):
         if self.config.get("end_date") is None:
@@ -341,6 +367,19 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
         return th.cast(datetime.datetime, pendulum.parse(self.config["end_date"]))
     
     def _sync_with_tags(self, start_date, end_date):
+            
+        self.schema = th.PropertiesList(
+            th.Property("time_period_start", th.DateTimeType),
+            th.Property("time_period_end", th.DateTimeType),
+            th.Property("metric_name", th.StringType),
+            th.Property("amount", th.StringType),
+            th.Property("amount_unit", th.StringType),
+            th.Property("usage_type", th.StringType),
+            th.Property("charge_type", th.StringType),
+            th.Property("tag_key", th.StringType),
+            th.Property("tag_value", th.StringType)
+        ).to_dict()
+
         """Return a generator of row-type dictionary objects."""
         LOGGER.info('Starting _sync_with_tags for %s', self.name)
              
@@ -434,6 +473,16 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
     def _sync_without_tags(self, start_date, end_date):
         """Return a generator of row-type dictionary objects."""
         LOGGER.info('Starting _sync_without_tags for %s', self.name)
+
+        self.schema = th.PropertiesList(
+            th.Property("time_period_start", th.DateTimeType),
+            th.Property("time_period_end", th.DateTimeType),
+            th.Property("metric_name", th.StringType),
+            th.Property("amount", th.StringType),
+            th.Property("amount_unit", th.StringType),
+            th.Property("usage_type", th.StringType),
+            th.Property("charge_type", th.StringType),
+        ).to_dict()
 
         data = []
         count = 0
