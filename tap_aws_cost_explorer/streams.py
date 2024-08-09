@@ -113,9 +113,6 @@ class CostsByServicesStream(AWSCostExplorerStream):
         """Return a generator of row-type dictionary objects."""
         LOGGER.info('Starting _sync_with_tags for %s', self.name)
         
-        self.schema.append(th.Property("tag_key", th.StringType))
-        self.schema.append(th.Property("tag_value", th.StringType))
-
         new_property = th.Property("tag_key", th.StringType)
         self.schema["properties"]["tag_key"] = new_property.to_dict()
 
