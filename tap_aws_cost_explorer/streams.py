@@ -115,7 +115,13 @@ class CostsByServicesStream(AWSCostExplorerStream):
         
         self.schema.append(th.Property("tag_key", th.StringType))
         self.schema.append(th.Property("tag_value", th.StringType))
-        
+
+        new_property = th.Property("tag_key", th.StringType)
+        self.schema["properties"]["tag_key"] = new_property.to_dict()
+
+        new_property = th.Property("tag_value", th.StringType)
+        self.schema["properties"]["tag_value"] = new_property.to_dict()
+
         count = 0
         data = []
 
