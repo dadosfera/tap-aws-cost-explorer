@@ -101,19 +101,110 @@ class CostsByServicesStream(AWSCostExplorerStream):
         th.Property("amount_unit", th.StringType),
         th.Property("service", th.StringType),
         th.Property("charge_type", th.StringType),
+        th.Property("tag_keys", th.StringType)
     ).to_dict()
 
     def _get_end_date(self):
         if self.config.get("end_date") is None:
             return datetime.datetime.today() - datetime.timedelta(days=1)
         return th.cast(datetime.datetime, pendulum.parse(self.config["end_date"]))
-
-    def get_records(self, context: Optional[dict]) -> Iterable[dict]:
+    
+    def _sync_with_tags(self, start_date, end_date):
         """Return a generator of row-type dictionary objects."""
-        LOGGER.info('Starting sync for %s', self.name)
-        next_page = True
-        start_date = self.get_starting_timestamp(context)
-        end_date = self._get_end_date()
+        LOGGER.info('Starting _sync_with_tags for %s', self.name)
+             
+        count = 0
+        data = []
+
+        start_date_str = self.get_bookmark(
+        ) if self.get_bookmark() else start_date.strftime("%Y-%m-%d")
+
+        LOGGER.info(f'Start Date: {start_date_str}')
+        tags_keys = self.config.get("tag_keys")
+
+        for tag in tags_keys:
+            for record_type in self.config.get("record_types"):
+
+                response = self.conn.get_cost_and_usage(
+                    TimePeriod={
+                        'Start': start_date_str,
+                        'End': end_date.strftime("%Y-%m-%d")
+                    },
+                    Granularity=self.config.get("granularity"),
+                    Metrics=self.config.get("metrics"),
+                    Filter={
+                        'Dimensions': {
+                            'Key': 'RECORD_TYPE',
+                            'Values': [record_type],
+                        }
+                    },
+                    GroupBy=[
+                        {
+                            'Type': 'DIMENSION',
+                            'Key': 'SERVICE'
+                        },
+                        {
+                            "Type":"TAG",
+                            "Key": tag
+                        }
+                    ]
+                )
+
+                next_page = response.get("NextPageToken")
+                data.append(
+                    {
+                        "Results": response['ResultsByTime'], 
+                        "RecordType": record_type
+                    }
+                )
+
+                count += 1
+                LOGGER.info(f'Request: {count}')
+
+                while next_page:
+                    response = self.conn.get_cost_and_usage(
+                        TimePeriod={
+                            'Start': start_date_str,
+                            'End': end_date.strftime("%Y-%m-%d")
+                        },
+                        Granularity=self.config.get("granularity"),
+                        Metrics=self.config.get("metrics"),
+                        Filter={
+                            'Dimensions': {
+                                'Key': 'RECORD_TYPE',
+                                'Values': [record_type],
+                            }
+                        },
+                        GroupBy=[
+                            {
+                                'Type': 'DIMENSION',
+                                'Key': 'SERVICE'
+                            },
+                            {
+                                "Type":"TAG",
+                                "Key": tag
+                            }
+                        ],
+                        NextPageToken=next_page
+                    )
+
+                    next_page = response.get("NextPageToken")
+                    data.append(
+                        {
+                            "Results": response['ResultsByTime'], 
+                            "RecordType": record_type
+                        }
+                    )
+
+                    count += 1
+                    LOGGER.info(f'Request: {count}')
+
+        return data
+
+    def _sync_without_tags(self, start_date, end_date):
+        """Return a generator of row-type dictionary objects."""
+        LOGGER.info('Starting _sync_without_tags for %s', self.name)
+
         data = []
         count = 0
 
@@ -144,7 +235,13 @@ class CostsByServicesStream(AWSCostExplorerStream):
                 ]
             )
             next_page = response.get("NextPageToken")
-            data.extend(response['ResultsByTime'])
+
+            data.append(
+                    {
+                        "Results": response['ResultsByTime'], 
+                        "RecordType": record_type
+                    }
+            )
 
             count += 1
             LOGGER.info(f'Request: {count}')
@@ -173,24 +270,52 @@ class CostsByServicesStream(AWSCostExplorerStream):
                 )
 
                 next_page = response.get("NextPageToken")
-                data.extend(response['ResultsByTime'])
+                data.append(
+                    {
+                        "Results": response['ResultsByTime'], 
+                        "RecordType": record_type
+                    }
+                )
                 count += 1
-                LOGGER.info(f'Request: {count}')
 
-            # LOGGER.info(f'Data: {data}')
+        return data
+    
+    def get_records(self, context: Optional[dict]) -> Iterable[dict]:
+        start_date = self.get_starting_timestamp(context)
+        end_date = self._get_end_date()
 
-            for row in data:
+        
+        if self.config.get("tag_keys", None):
+            data = self._sync_with_tags(start_date, end_date)
+        else:
+            data = self._sync_without_tags(start_date, end_date)
+
+        for d in data:
+            for row in d['Results']:
                 for k in row.get("Groups"):
                     for i, j in k.get("Metrics").items():
-                        yield {
-                            "time_period_start": row.get("TimePeriod").get("Start"),
-                            "time_period_end": row.get("TimePeriod").get("End"),
-                            "metric_name": i,
-                            "amount": j.get("Amount"),
-                            "amount_unit": j.get("Unit"),
-                            "service": k.get('Keys')[0],
-                            "charge_type": record_type,
-                        }
+                        if self.config.get("tag_keys", None):
+                            yield {
+                                "time_period_start": row.get("TimePeriod").get("Start"),
+                                "time_period_end": row.get("TimePeriod").get("End"),
+                                "metric_name": i,
+                                "amount": j.get("Amount"),
+                                "amount_unit": j.get("Unit"),
+                                "service": k.get('Keys')[0],
+                                "charge_type": d.get('RecordType'),
+                                "tag_key": k.get('Keys')[1].split("$")[0],
+                                "tag_value": k.get('Keys')[1].split("$")[1],
+                            }
+                        else:
+                            yield {
+                                "time_period_start": row.get("TimePeriod").get("Start"),
+                                "time_period_end": row.get("TimePeriod").get("End"),
+                                "metric_name": i,
+                                "amount": j.get("Amount"),
+                                "amount_unit": j.get("Unit"),
+                                "service": k.get('Keys')[0],
+                                "charge_type": d.get('RecordType')
+                            }
 
 
 class CostsByUsageTypeStream(AWSCostExplorerStream):
@@ -207,26 +332,115 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
         th.Property("amount_unit", th.StringType),
         th.Property("usage_type", th.StringType),
         th.Property("charge_type", th.StringType),
+        th.Property("tag_keys", th.StringType),
     ).to_dict()
 
     def _get_end_date(self):
         if self.config.get("end_date") is None:
             return datetime.datetime.today() - datetime.timedelta(days=1)
         return th.cast(datetime.datetime, pendulum.parse(self.config["end_date"]))
-
-    def get_records(self, context: Optional[dict]) -> Iterable[dict]:
-        LOGGER.info('Starting sync for %s', self.name)
-
+    
+    def _sync_with_tags(self, start_date, end_date):
         """Return a generator of row-type dictionary objects."""
-        next_page = True
-        start_date = self.get_starting_timestamp(context)
-        end_date = self._get_end_date()
+        LOGGER.info('Starting _sync_with_tags for %s', self.name)
+             
+        count = 0
+        data = []
+
+        start_date_str = self.get_bookmark(
+        ) if self.get_bookmark() else start_date.strftime("%Y-%m-%d")
+
+        LOGGER.info(f'Start Date: {start_date_str}')
+        tags_keys = self.config.get("tag_keys")
+
+        for tag in tags_keys:
+            for record_type in self.config.get("record_types"):
+                response = self.conn.get_cost_and_usage(
+                    TimePeriod={
+                        'Start': start_date_str,
+                        'End': end_date.strftime("%Y-%m-%d")
+                    },
+                    Granularity=self.config.get("granularity"),
+                    Metrics=self.config.get("metrics"),
+                    Filter={
+                        'Dimensions': {
+                            'Key': 'RECORD_TYPE',
+                            'Values': [record_type],
+                        }
+                    },
+                    GroupBy=[
+                        {
+                            'Type': 'DIMENSION',
+                            'Key': 'SERVICE'
+                        },
+                        {
+                            "Type":"TAG",
+                            "Key": tag
+                        }
+                    ]
+                )
+
+                next_page = response.get("NextPageToken")
+                data.append(
+                    {
+                        "Results": response['ResultsByTime'], 
+                        "RecordType": record_type
+                    }
+                )
+
+                count += 1
+                LOGGER.info(f'Request: {count}')
+
+                while next_page:
+                    response = self.conn.get_cost_and_usage(
+                        TimePeriod={
+                            'Start': start_date_str,
+                            'End': end_date.strftime("%Y-%m-%d")
+                        },
+                        Granularity=self.config.get("granularity"),
+                        Metrics=self.config.get("metrics"),
+                        Filter={
+                            'Dimensions': {
+                                'Key': 'RECORD_TYPE',
+                                'Values': [record_type],
+                            }
+                        },
+                        GroupBy=[
+                            {
+                                'Type': 'DIMENSION',
+                                'Key': 'SERVICE'
+                            },
+                            {
+                                "Type":"TAG",
+                                "Key": tag
+                            }
+                        ],
+                        NextPageToken=next_page
+                    )
+
+                    next_page = response.get("NextPageToken")
+                    data.append(
+                        {
+                            "Results": response['ResultsByTime'], 
+                            "RecordType": record_type
+                        }
+                    )
+
+                    count += 1
+                    LOGGER.info(f'Request: {count}')
+
+        return data
+
+    def _sync_without_tags(self, start_date, end_date):
+        """Return a generator of row-type dictionary objects."""
+        LOGGER.info('Starting _sync_without_tags for %s', self.name)
+
         data = []
         count = 0
 
         start_date_str = self.get_bookmark(
         ) if self.get_bookmark() else start_date.strftime("%Y-%m-%d")
-        
+
         LOGGER.info(f'Start Date: {start_date_str}')
 
         for record_type in self.config.get("record_types"):
@@ -240,7 +454,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                 Filter={
                     'Dimensions': {
                         'Key': 'RECORD_TYPE',
-                        'Values': [record_type],
+                        'Values': [record_type]
                     }
                 },
                 GroupBy=[
@@ -249,11 +463,15 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                         'Key': 'USAGE_TYPE'
                     }
                 ]
-
             )
             next_page = response.get("NextPageToken")
 
-            data.extend(response['ResultsByTime'])
+            data.append(
+                    {
+                        "Results": response['ResultsByTime'], 
+                        "RecordType": record_type
+                    }
+            )
 
             count += 1
             LOGGER.info(f'Request: {count}')
@@ -282,23 +500,49 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                 )
 
                 next_page = response.get("NextPageToken")
-                data.extend(response['ResultsByTime'])
-
+                data.append(
+                    {
+                        "Results": response['ResultsByTime'], 
+                        "RecordType": record_type
+                    }
+                )
                 count += 1
-                LOGGER.info(f'Request: {count}')
 
-            # LOGGER.info(f'Data: {data}')
+        return data
+    
+    def get_records(self, context: Optional[dict]) -> Iterable[dict]:
+        start_date = self.get_starting_timestamp(context)
+        end_date = self._get_end_date()
 
-            for row in data:
+        
+        if self.config.get("tag_keys", None):
+            data = self._sync_with_tags(start_date, end_date)
+        else:
+            data = self._sync_without_tags(start_date, end_date)
+
+        for d in data:
+            for row in d['Results']:
                 for k in row.get("Groups"):
                     for i, j in k.get("Metrics").items():
-                        yield {
-                            "time_period_start": row.get("TimePeriod").get("Start"),
-                            "time_period_end": row.get("TimePeriod").get("End"),
-                            "metric_name": i,
-                            "amount": j.get("Amount"),
-                            "amount_unit": j.get("Unit"),
-                            "usage_type": k.get('Keys')[0],
-                            "charge_type": record_type,
-                        }
-
+                        if self.config.get("tag_keys", None):
+                            yield {
+                                "time_period_start": row.get("TimePeriod").get("Start"),
+                                "time_period_end": row.get("TimePeriod").get("End"),
+                                "metric_name": i,
+                                "amount": j.get("Amount"),
+                                "amount_unit": j.get("Unit"),
+                                "usage_type": k.get('Keys')[0],
+                                "charge_type": d.get('RecordType'),
+                                "tag_key": k.get('Keys')[1].split("$")[0],
+                                "tag_value": k.get('Keys')[1].split("$")[1],
+                            }
+                        else:
+                            yield {
+                                "time_period_start": row.get("TimePeriod").get("Start"),
+                                "time_period_end": row.get("TimePeriod").get("End"),
+                                "metric_name": i,
+                                "amount": j.get("Amount"),
+                                "amount_unit": j.get("Unit"),
+                                "usage_type": k.get('Keys')[0],
+                                "charge_type": d.get('RecordType')
+                            }
