@@ -19,7 +19,6 @@ REQUIRED_CONFIG_KEYS = [
     "granularity",
     "metrics",
     "record_types",
-    "tag_keys",
 ]
 
 
