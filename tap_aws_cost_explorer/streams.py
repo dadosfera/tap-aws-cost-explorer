@@ -113,11 +113,13 @@ class CostsByServicesStream(AWSCostExplorerStream):
         """Return a generator of row-type dictionary objects."""
         LOGGER.info('Starting _sync_with_tags for %s', self.name)
         
-        new_property = th.Property("tag_key", th.StringType)
-        self.schema["properties"]["tag_key"] = new_property.to_dict()
+        if "tag_key" not in self.schema["properties"]:
+            new_property = th.Property("tag_key", th.StringType)
+            self.schema["properties"]["tag_key"] = new_property.to_dict()
 
-        new_property = th.Property("tag_value", th.StringType)
-        self.schema["properties"]["tag_value"] = new_property.to_dict()
+        if "tag_value" not in self.schema["properties"]:      
+            new_property = th.Property("tag_value", th.StringType)
+            self.schema["properties"]["tag_value"] = new_property.to_dict()
 
         count = 0
         data = []
@@ -339,8 +341,6 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
             th.Property("amount_unit", th.StringType),
             th.Property("usage_type", th.StringType),
             th.Property("charge_type", th.StringType),
-            th.Property("tag_key", th.StringType),
-            th.Property("tag_value", th.StringType)
         ).to_dict()
 
 
@@ -351,21 +351,17 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
     
     def _sync_with_tags(self, start_date, end_date):
             
-        self.schema = th.PropertiesList(
-            th.Property("time_period_start", th.DateTimeType),
-            th.Property("time_period_end", th.DateTimeType),
-            th.Property("metric_name", th.StringType),
-            th.Property("amount", th.StringType),
-            th.Property("amount_unit", th.StringType),
-            th.Property("usage_type", th.StringType),
-            th.Property("charge_type", th.StringType),
-            th.Property("tag_key", th.StringType),
-            th.Property("tag_value", th.StringType)
-        ).to_dict()
-
         """Return a generator of row-type dictionary objects."""
         LOGGER.info('Starting _sync_with_tags for %s', self.name)
-             
+
+        if "tag_key" not in self.schema["properties"]:
+            new_property = th.Property("tag_key", th.StringType)
+            self.schema["properties"]["tag_key"] = new_property.to_dict()
+
+        if "tag_value" not in self.schema["properties"]:      
+            new_property = th.Property("tag_value", th.StringType)
+            self.schema["properties"]["tag_value"] = new_property.to_dict()
+
         count = 0
         data = []
 
