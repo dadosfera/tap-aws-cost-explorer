@@ -6,7 +6,6 @@ from typing import Optional, Iterable
 
 import pendulum
 from singer_sdk import typing as th  # JSON Schema typing helpers
-from singer_sdk.tap_base import Tap
 
 from tap_aws_cost_explorer.client import AWSCostExplorerStream
 import singer
