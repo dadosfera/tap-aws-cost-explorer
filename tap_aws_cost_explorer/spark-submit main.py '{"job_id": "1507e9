@@ -1,1 +1,0 @@
-spark-submit main.py '{"job_id": "1507e943_2187_4fdd_9c2c_54338fedaeef_0", "pipeline_id": "1507e943_2187_4fdd_9c2c_54338fedaeef", "pipeline_run_id": "2827fcb5-9586-4218-a214-91068b34b0f9"}'
