@@ -12,6 +12,13 @@ import singer
 
 LOGGER = singer.get_logger()
 
+# Nomenclatura das contas AWS
+ACCOUNT_MAPPING = {
+    "468720548566": "[DEV] Dadosfera",
+    "429201177306": "Health Lake",
+    "038715283734": "Datasprints",
+    "611330257153": "[PRD] Dadosfera"
+}
 
 class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
     """Define custom stream."""
@@ -23,6 +30,7 @@ class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
         th.Property("time_period_start", th.DateTimeType),
         th.Property("time_period_end", th.DateTimeType),
         th.Property("metric_name", th.StringType),
+        th.Property("linked_account", th.StringType), # Adicionado
         th.Property("amount", th.StringType),
         th.Property("amount_unit", th.StringType),
     ).to_dict()
@@ -82,6 +90,7 @@ class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
                     "time_period_start": row.get("TimePeriod").get("Start"),
                     "time_period_end": row.get("TimePeriod").get("End"),
                     "metric_name": k,
+                    "linked_account": v.get("Account"), # Adicionado
                     "amount": v.get("Amount"),
                     "amount_unit": v.get("Unit")
                 }
@@ -96,6 +105,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
             th.Property("time_period_start", th.DateTimeType),
             th.Property("time_period_end", th.DateTimeType),
             th.Property("metric_name", th.StringType),
+            th.Property("linked_account", th.StringType), # Adicionado
             th.Property("amount", th.StringType),
             th.Property("amount_unit", th.StringType),
             th.Property("service", th.StringType),
@@ -151,6 +161,10 @@ class CostsByServicesStream(AWSCostExplorerStream):
                             'Key': 'SERVICE'
                         },
                         {
+                            'Type': 'DIMENSION',
+                            'Key': 'LINKED_ACCOUNT'
+                        },
+                        {
                             "Type":"TAG",
                             "Key": tag
                         }
@@ -186,6 +200,10 @@ class CostsByServicesStream(AWSCostExplorerStream):
                             {
                                 'Type': 'DIMENSION',
                                 'Key': 'SERVICE'
+                            },
+                            {
+                                'Type': 'DIMENSION',
+                                'Key': 'LINKED_ACCOUNT'
                             },
                             {
                                 "Type":"TAG",
@@ -239,6 +257,10 @@ class CostsByServicesStream(AWSCostExplorerStream):
                     {
                         'Type': 'DIMENSION',
                         'Key': 'SERVICE'
+                    },
+                    {
+                        'Type': 'DIMENSION',
+                        'Key': 'LINKED_ACCOUNT'
                     }
                 ]
             )
@@ -272,6 +294,10 @@ class CostsByServicesStream(AWSCostExplorerStream):
                         {
                             'Type': 'DIMENSION',
                             'Key': 'SERVICE'
+                        },
+                        {
+                            'Type': 'DIMENSION',
+                            'Key': 'LINKED_ACCOUNT'
                         }
                     ],
                     NextPageToken=next_page
@@ -307,18 +333,20 @@ class CostsByServicesStream(AWSCostExplorerStream):
                                 "time_period_start": row.get("TimePeriod").get("Start"),
                                 "time_period_end": row.get("TimePeriod").get("End"),
                                 "metric_name": i,
+                                "linked_account": ACCOUNT_MAPPING.get(k.get('Keys')[1], k.get('Keys')[1]), # Adicionado
                                 "amount": j.get("Amount"),
                                 "amount_unit": j.get("Unit"),
                                 "service": k.get('Keys')[0],
                                 "charge_type": d.get('RecordType'),
-                                "tag_key": k.get('Keys')[1].split("$")[0],
-                                "tag_value": k.get('Keys')[1].split("$")[1],
+                                "tag_key": k.get('Keys')[2].split("$")[0],
+                                "tag_value": k.get('Keys')[2].split("$")[1],
                             }
                         else:
                             yield {
                                 "time_period_start": row.get("TimePeriod").get("Start"),
                                 "time_period_end": row.get("TimePeriod").get("End"),
                                 "metric_name": i,
+                                "linked_account": ACCOUNT_MAPPING.get(k.get('Keys')[1], k.get('Keys')[1]), # Adicionado
                                 "amount": j.get("Amount"),
                                 "amount_unit": j.get("Unit"),
                                 "service": k.get('Keys')[0],
@@ -336,6 +364,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
             th.Property("time_period_start", th.DateTimeType),
             th.Property("time_period_end", th.DateTimeType),
             th.Property("metric_name", th.StringType),
+            th.Property("linked_account", th.StringType), #Adicionado
             th.Property("amount", th.StringType),
             th.Property("amount_unit", th.StringType),
             th.Property("usage_type", th.StringType),
@@ -391,6 +420,10 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                             'Key': 'SERVICE'
                         },
                         {
+                            'Type': 'DIMENSION',
+                            'Key': 'LINKED_ACCOUNT'
+                        },
+                        {
                             "Type":"TAG",
                             "Key": tag
                         }
@@ -428,6 +461,10 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                                 'Key': 'SERVICE'
                             },
                             {
+                                'Type': 'DIMENSION',
+                                'Key': 'LINKED_ACCOUNT'
+                            },
+                            {
                                 "Type":"TAG",
                                 "Key": tag
                             }
@@ -456,6 +493,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
             th.Property("time_period_start", th.DateTimeType),
             th.Property("time_period_end", th.DateTimeType),
             th.Property("metric_name", th.StringType),
+            th.Property("linked_account", th.StringType), #Adicionado
             th.Property("amount", th.StringType),
             th.Property("amount_unit", th.StringType),
             th.Property("usage_type", th.StringType),
@@ -488,6 +526,10 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                     {
                         'Type': 'DIMENSION',
                         'Key': 'USAGE_TYPE'
+                    },
+                    {
+                        'Type': 'DIMENSION',
+                        'Key': 'LINKED_ACCOUNT'
                     }
                 ]
             )
@@ -521,6 +563,10 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                         {
                             'Type': 'DIMENSION',
                             'Key': 'USAGE_TYPE'
+                        },
+                        {
+                            'Type': 'DIMENSION',
+                            'Key': 'LINKED_ACCOUNT'
                         }
                     ],
                     NextPageToken=next_page
@@ -556,18 +602,20 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                                 "time_period_start": row.get("TimePeriod").get("Start"),
                                 "time_period_end": row.get("TimePeriod").get("End"),
                                 "metric_name": i,
+                                "linked_account": ACCOUNT_MAPPING.get(k.get('Keys')[1], k.get('Keys')[1]), # Adicionado
                                 "amount": j.get("Amount"),
                                 "amount_unit": j.get("Unit"),
                                 "usage_type": k.get('Keys')[0],
                                 "charge_type": d.get('RecordType'),
-                                "tag_key": k.get('Keys')[1].split("$")[0],
-                                "tag_value": k.get('Keys')[1].split("$")[1],
+                                "tag_key": k.get('Keys')[2].split("$")[0],
+                                "tag_value": k.get('Keys')[2].split("$")[1],
                             }
                         else:
                             yield {
                                 "time_period_start": row.get("TimePeriod").get("Start"),
                                 "time_period_end": row.get("TimePeriod").get("End"),
                                 "metric_name": i,
+                                "linked_account": ACCOUNT_MAPPING.get(k.get('Keys')[1], k.get('Keys')[1]), # Adicionado
                                 "amount": j.get("Amount"),
                                 "amount_unit": j.get("Unit"),
                                 "usage_type": k.get('Keys')[0],
