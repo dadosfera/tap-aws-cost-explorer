@@ -12,14 +12,6 @@ import singer
 
 LOGGER = singer.get_logger()
 
-# Nomenclatura das contas AWS
-ACCOUNT_MAPPING = {
-    "468720548566": "[DEV] Dadosfera",
-    "429201177306": "Health Lake",
-    "038715283734": "Datasprints",
-    "611330257153": "[PRD] Dadosfera"
-}
-
 class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
     """Define custom stream."""
     name = "cost"
@@ -333,7 +325,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
                                 "time_period_start": row.get("TimePeriod").get("Start"),
                                 "time_period_end": row.get("TimePeriod").get("End"),
                                 "metric_name": i,
-                                "linked_account": ACCOUNT_MAPPING.get(k.get('Keys')[1], k.get('Keys')[1]), # Adicionado
+                                "linked_account": k.get('Keys')[1], # Adicionado
                                 "amount": j.get("Amount"),
                                 "amount_unit": j.get("Unit"),
                                 "service": k.get('Keys')[0],
@@ -346,7 +338,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
                                 "time_period_start": row.get("TimePeriod").get("Start"),
                                 "time_period_end": row.get("TimePeriod").get("End"),
                                 "metric_name": i,
-                                "linked_account": ACCOUNT_MAPPING.get(k.get('Keys')[1], k.get('Keys')[1]), # Adicionado
+                                "linked_account": k.get('Keys')[1], # Adicionado
                                 "amount": j.get("Amount"),
                                 "amount_unit": j.get("Unit"),
                                 "service": k.get('Keys')[0],
@@ -602,7 +594,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                                 "time_period_start": row.get("TimePeriod").get("Start"),
                                 "time_period_end": row.get("TimePeriod").get("End"),
                                 "metric_name": i,
-                                "linked_account": ACCOUNT_MAPPING.get(k.get('Keys')[1], k.get('Keys')[1]), # Adicionado
+                                "linked_account": k.get('Keys')[1], # Adicionado
                                 "amount": j.get("Amount"),
                                 "amount_unit": j.get("Unit"),
                                 "usage_type": k.get('Keys')[0],
@@ -615,7 +607,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                                 "time_period_start": row.get("TimePeriod").get("Start"),
                                 "time_period_end": row.get("TimePeriod").get("End"),
                                 "metric_name": i,
-                                "linked_account": ACCOUNT_MAPPING.get(k.get('Keys')[1], k.get('Keys')[1]), # Adicionado
+                                "linked_account": k.get('Keys')[1], # Adicionado
                                 "amount": j.get("Amount"),
                                 "amount_unit": j.get("Unit"),
                                 "usage_type": k.get('Keys')[0],
