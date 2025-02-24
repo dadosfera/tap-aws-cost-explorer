@@ -99,6 +99,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
             th.Property("amount_unit", th.StringType),
             th.Property("service", th.StringType),
             th.Property("charge_type", th.StringType),
+            th.Property("linked_account", th.StringType), # Adcionado
         ).to_dict()
 
 
@@ -333,7 +334,10 @@ class CostsByServicesStream(AWSCostExplorerStream):
                         Metrics=self.config.get("metrics"),
                         Filter=filter_conditions,
                         GroupBy=[
-                            {'Type': 'DIMENSION', 'Key': 'SERVICE'}
+                            {
+                                'Type': 'DIMENSION', 
+                                'Key': 'SERVICE'
+                            }
                         ]
                     )
 
@@ -359,7 +363,10 @@ class CostsByServicesStream(AWSCostExplorerStream):
                             Metrics=self.config.get("metrics"),
                             Filter=filter_conditions,
                             GroupBy=[
-                                {'Type': 'DIMENSION', 'Key': 'SERVICE'}
+                                {
+                                    'Type': 'DIMENSION', 
+                                    'Key': 'SERVICE'
+                                }
                             ],
                             NextPageToken=next_page
                         )
@@ -464,6 +471,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
                                 "amount_unit": j.get("Unit"),
                                 "service": k.get('Keys')[0],
                                 "charge_type": d.get('RecordType'),
+                                "linked_account": d.get('LinkedAccount'), # Adicionado
                                 "tag_key": k.get('Keys')[1].split("$")[0],
                                 "tag_value": k.get('Keys')[1].split("$")[1],
                             }
@@ -475,7 +483,8 @@ class CostsByServicesStream(AWSCostExplorerStream):
                                 "amount": j.get("Amount"),
                                 "amount_unit": j.get("Unit"),
                                 "service": k.get('Keys')[0],
-                                "charge_type": d.get('RecordType')
+                                "charge_type": d.get('RecordType'),
+                                "linked_account": d.get('LinkedAccount'), # Adicionado
                             }
 
 
@@ -493,6 +502,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
             th.Property("amount_unit", th.StringType),
             th.Property("usage_type", th.StringType),
             th.Property("charge_type", th.StringType),
+            th.Property("linked_account", th.StringType), # Adicionado
         ).to_dict()
 
 
@@ -522,46 +532,95 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
 
         LOGGER.info(f'Start Date: {start_date_str}')
         tags_keys = self.config.get("tag_keys")
+        linked_accounts = self.config.get("linked_account", [])
 
         for tag in tags_keys:
             for record_type in self.config.get("record_types"):
-                response = self.conn.get_cost_and_usage(
-                    TimePeriod={
-                        'Start': start_date_str,
-                        'End': end_date.strftime("%Y-%m-%d")
-                    },
-                    Granularity=self.config.get("granularity"),
-                    Metrics=self.config.get("metrics"),
-                    Filter={
-                        'Dimensions': {
-                            'Key': 'RECORD_TYPE',
-                            'Values': [record_type],
+                if linked_accounts:
+                    for account in linked_accounts:
+                        filter_conditions = {
+                            'And': [
+                                {
+                                    'Dimensions': {
+                                        'Key': 'RECORD_TYPE',
+                                        'Values': [record_type]
+                                    }
+                                },
+                                {
+                                    'Dimensions': {
+                                        'Key': 'LINKED_ACCOUNT',
+                                        'Values': [account]
+                                    }
+                                }
+                            ]
                         }
-                    },
-                    GroupBy=[
-                        {
-                            'Type': 'DIMENSION',
-                            'Key': 'SERVICE'
-                        },
-                        {
-                            "Type":"TAG",
-                            "Key": tag
-                        }
-                    ]
-                )
 
-                next_page = response.get("NextPageToken")
-                data.append(
-                    {
-                        "Results": response['ResultsByTime'], 
-                        "RecordType": record_type
-                    }
-                )
+                        response = self.conn.get_cost_and_usage(
+                            TimePeriod={
+                                'Start': start_date_str,
+                                'End': end_date.strftime("%Y-%m-%d")
+                            },
+                            Granularity=self.config.get("granularity"),
+                            Metrics=self.config.get("metrics"),
+                            Filter=filter_conditions,
+                            GroupBy=[
+                                {
+                                    'Type': 'DIMENSION',
+                                    'Key': 'SERVICE'
+                                },
+                                {
+                                    "Type":"TAG",
+                                    "Key": tag
+                                }
+                            ]
+                        )
 
-                count += 1
-                LOGGER.info(f'Request: {count}')
+                        next_page = response.get("NextPageToken")
+                        data.append(
+                            {
+                                "Results": response['ResultsByTime'], 
+                                "RecordType": record_type,
+                                "LinkedAccount": account
+                            }
+                        )
 
-                while next_page:
+                        count += 1
+                        LOGGER.info(f'Request: {count}')
+
+                        while next_page:
+                            response = self.conn.get_cost_and_usage(
+                                TimePeriod={
+                                    'Start': start_date_str,
+                                    'End': end_date.strftime("%Y-%m-%d")
+                                },
+                                Granularity=self.config.get("granularity"),
+                                Metrics=self.config.get("metrics"),
+                                Filter=filter_conditions,
+                                GroupBy=[
+                                    {
+                                        'Type': 'DIMENSION',
+                                        'Key': 'SERVICE'
+                                    },
+                                    {
+                                        "Type":"TAG",
+                                        "Key": tag
+                                    }
+                                ],
+                                NextPageToken=next_page
+                            )
+
+                            next_page = response.get("NextPageToken")
+                            data.append(
+                                {
+                                    "Results": response['ResultsByTime'], 
+                                    "RecordType": record_type,
+                                    "LinkedAccount": account
+                                }
+                            )
+
+                            count += 1
+                            LOGGER.info(f'Request: {count}')
+                else:
                     response = self.conn.get_cost_and_usage(
                         TimePeriod={
                             'Start': start_date_str,
@@ -584,8 +643,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                                 "Type":"TAG",
                                 "Key": tag
                             }
-                        ],
-                        NextPageToken=next_page
+                        ]
                     )
 
                     next_page = response.get("NextPageToken")
@@ -598,6 +656,39 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
 
                     count += 1
                     LOGGER.info(f'Request: {count}')
+
+                    while next_page:
+                        response = self.conn.get_cost_and_usage(
+                            TimePeriod={
+                                'Start': start_date_str,
+                                'End': end_date.strftime("%Y-%m-%d")
+                            },
+                            Granularity=self.config.get("granularity"),
+                            Metrics=self.config.get("metrics"),
+                            Filter=filter_conditions,
+                            GroupBy=[
+                                {
+                                    'Type': 'DIMENSION',
+                                    'Key': 'SERVICE'
+                                },
+                                {
+                                    "Type":"TAG",
+                                    "Key": tag
+                                }
+                            ],
+                            NextPageToken=next_page
+                        )
+
+                        next_page = response.get("NextPageToken")
+                        data.append(
+                            {
+                                "Results": response['ResultsByTime'], 
+                                "RecordType": record_type
+                            }
+                        )
+
+                        count += 1
+                        LOGGER.info(f'Request: {count}')
 
         return data
 
@@ -613,6 +704,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
             th.Property("amount_unit", th.StringType),
             th.Property("usage_type", th.StringType),
             th.Property("charge_type", th.StringType),
+            th.Property("linked_account", th.StringType), # Adicionado
         ).to_dict()
 
         data = []
@@ -622,41 +714,89 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
         ) if self.get_bookmark() else start_date.strftime("%Y-%m-%d")
 
         LOGGER.info(f'Start Date: {start_date_str}')
+        linked_accounts = self.config.get("linked_account", [])
 
         for record_type in self.config.get("record_types"):
-            response = self.conn.get_cost_and_usage(
-                TimePeriod={
-                    'Start': start_date_str,
-                    'End': end_date.strftime("%Y-%m-%d")
-                },
-                Granularity=self.config.get("granularity"),
-                Metrics=self.config.get("metrics"),
-                Filter={
+            if linked_accounts:
+                for account in linked_accounts:
+                        filter_conditions = {
+                            'And': [
+                                {
+                                    'Dimensions': {
+                                        'Key': 'RECORD_TYPE',
+                                        'Values': [record_type]
+                                    }
+                                },
+                                {
+                                    'Dimensions': {
+                                        'Key': 'LINKED_ACCOUNT',
+                                        'Values': [account]
+                                    }
+                                }
+                            ]
+                        }
+                        response = self.conn.get_cost_and_usage(
+                            TimePeriod={
+                                'Start': start_date_str,
+                                'End': end_date.strftime("%Y-%m-%d")
+                            },
+                            Granularity=self.config.get("granularity"),
+                            Metrics=self.config.get("metrics"),
+                            Filter=filter_conditions,
+                            GroupBy=[
+                                {
+                                    'Type': 'DIMENSION',
+                                    'Key': 'USAGE_TYPE'
+                                }
+                            ]
+                        )
+                        next_page = response.get("NextPageToken")
+                        data.append(
+                                {
+                                    "Results": response['ResultsByTime'], 
+                                    "RecordType": record_type,
+                                    "LinkedAccount": account
+                                }
+                        )
+
+                count += 1
+                LOGGER.info(f'Request: {count}')
+
+                while next_page:
+                    response = self.conn.get_cost_and_usage(
+                        TimePeriod={
+                            'Start': start_date_str,
+                            'End': end_date.strftime("%Y-%m-%d")
+                        },
+                        Granularity=self.config.get("granularity"),
+                        Metrics=self.config.get("metrics"),
+                        Filter=filter_conditions,
+                        GroupBy=[
+                            {
+                                'Type': 'DIMENSION',
+                                'Key': 'USAGE_TYPE'
+                            }
+                        ],
+                        NextPageToken=next_page
+                    )
+
+                    next_page = response.get("NextPageToken")
+                    data.append(
+                        {
+                            "Results": response['ResultsByTime'], 
+                            "RecordType": record_type,
+                            "LinkedAccount": account
+                        }
+                    )
+                    count += 1
+            else:
+                filter_conditions = {
                     'Dimensions': {
                         'Key': 'RECORD_TYPE',
                         'Values': [record_type]
                     }
-                },
-                GroupBy=[
-                    {
-                        'Type': 'DIMENSION',
-                        'Key': 'USAGE_TYPE'
-                    }
-                ]
-            )
-            next_page = response.get("NextPageToken")
-
-            data.append(
-                    {
-                        "Results": response['ResultsByTime'], 
-                        "RecordType": record_type
-                    }
-            )
-
-            count += 1
-            LOGGER.info(f'Request: {count}')
-
-            while next_page:
+                }
+                
                 response = self.conn.get_cost_and_usage(
                     TimePeriod={
                         'Start': start_date_str,
@@ -664,29 +804,52 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                     },
                     Granularity=self.config.get("granularity"),
                     Metrics=self.config.get("metrics"),
-                    Filter={
-                        'Dimensions': {
-                            'Key': 'RECORD_TYPE',
-                            'Values': [record_type],
-                        }
-                    },
+                    Filter=filter_conditions,
                     GroupBy=[
                         {
                             'Type': 'DIMENSION',
                             'Key': 'USAGE_TYPE'
                         }
-                    ],
-                    NextPageToken=next_page
+                    ]
+                )
+                next_page = response.get("NextPageToken")
+
+                data.append(
+                        {
+                            "Results": response['ResultsByTime'], 
+                            "RecordType": record_type
+                        }
                 )
 
-                next_page = response.get("NextPageToken")
-                data.append(
-                    {
-                        "Results": response['ResultsByTime'], 
-                        "RecordType": record_type
-                    }
-                )
                 count += 1
+                LOGGER.info(f'Request: {count}')
+
+                while next_page:
+                    response = self.conn.get_cost_and_usage(
+                        TimePeriod={
+                            'Start': start_date_str,
+                            'End': end_date.strftime("%Y-%m-%d")
+                        },
+                        Granularity=self.config.get("granularity"),
+                        Metrics=self.config.get("metrics"),
+                        Filter=filter_conditions,
+                        GroupBy=[
+                            {
+                                'Type': 'DIMENSION',
+                                'Key': 'USAGE_TYPE'
+                            }
+                        ],
+                        NextPageToken=next_page
+                    )
+
+                    next_page = response.get("NextPageToken")
+                    data.append(
+                        {
+                            "Results": response['ResultsByTime'], 
+                            "RecordType": record_type
+                        }
+                    )
+                    count += 1
 
         return data
     
@@ -713,6 +876,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                                 "amount_unit": j.get("Unit"),
                                 "usage_type": k.get('Keys')[0],
                                 "charge_type": d.get('RecordType'),
+                                "linked_account": d.get('LinkedAccount'), # Adicionado
                                 "tag_key": k.get('Keys')[1].split("$")[0],
                                 "tag_value": k.get('Keys')[1].split("$")[1],
                             }
@@ -724,5 +888,6 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                                 "amount": j.get("Amount"),
                                 "amount_unit": j.get("Unit"),
                                 "usage_type": k.get('Keys')[0],
-                                "charge_type": d.get('RecordType')
+                                "charge_type": d.get('RecordType'),
+                                "linked_account": d.get('LinkedAccount') # Adicionado
                             }
