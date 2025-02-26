@@ -22,6 +22,7 @@ class CostAndUsageWithResourcesStream(AWSCostExplorerStream):
         th.Property("time_period_start", th.DateTimeType),
         th.Property("time_period_end", th.DateTimeType),
         th.Property("metric_name", th.StringType),
+        th.Property("linked_account", th.StringType), # Adicionado
         th.Property("amount", th.StringType),
         th.Property("amount_unit", th.StringType),
     ).to_dict()
@@ -451,7 +452,6 @@ class CostsByServicesStream(AWSCostExplorerStream):
     def get_records(self, context: Optional[dict]) -> Iterable[dict]:
         start_date = self.get_starting_timestamp(context)
         end_date = self._get_end_date()
-
         
         if self.config.get("tag_keys", None):
             data = self._sync_with_tags(start_date, end_date)
@@ -463,29 +463,54 @@ class CostsByServicesStream(AWSCostExplorerStream):
                 for k in row.get("Groups"):
                     for i, j in k.get("Metrics").items():
                         if self.config.get("tag_keys", None):
-                            yield {
-                                "time_period_start": row.get("TimePeriod").get("Start"),
-                                "time_period_end": row.get("TimePeriod").get("End"),
-                                "metric_name": i,
-                                "amount": j.get("Amount"),
-                                "amount_unit": j.get("Unit"),
-                                "service": k.get('Keys')[0],
-                                "charge_type": d.get('RecordType'),
-                                "linked_account": d.get('LinkedAccount'), # Adicionado
-                                "tag_key": k.get('Keys')[1].split("$")[0],
-                                "tag_value": k.get('Keys')[1].split("$")[1],
-                            }
+                            if self.config.get("linked_account", []):
+                                yield {
+                                    "time_period_start": row.get("TimePeriod").get("Start"),
+                                    "time_period_end": row.get("TimePeriod").get("End"),
+                                    "metric_name": i,
+                                    "amount": j.get("Amount"),
+                                    "amount_unit": j.get("Unit"),
+                                    "service": k.get('Keys')[0],
+                                    "charge_type": d.get('RecordType'),
+                                    "linked_account": d.get('LinkedAccount'), # Adicionado
+                                    "tag_key": k.get('Keys')[1].split("$")[0],
+                                    "tag_value": k.get('Keys')[1].split("$")[1],
+                                }
+                            else:
+                                yield {
+                                    "time_period_start": row.get("TimePeriod").get("Start"),
+                                    "time_period_end": row.get("TimePeriod").get("End"),
+                                    "metric_name": i,
+                                    "amount": j.get("Amount"),
+                                    "amount_unit": j.get("Unit"),
+                                    "service": k.get('Keys')[0],
+                                    "charge_type": d.get('RecordType'),
+                                    "tag_key": k.get('Keys')[1].split("$")[0],
+                                    "tag_value": k.get('Keys')[1].split("$")[1],
+                                }
+
                         else:
-                            yield {
-                                "time_period_start": row.get("TimePeriod").get("Start"),
-                                "time_period_end": row.get("TimePeriod").get("End"),
-                                "metric_name": i,
-                                "amount": j.get("Amount"),
-                                "amount_unit": j.get("Unit"),
-                                "service": k.get('Keys')[0],
-                                "charge_type": d.get('RecordType'),
-                                "linked_account": d.get('LinkedAccount'), # Adicionado
-                            }
+                            if self.config.get("linked_account", []):
+                                yield {
+                                    "time_period_start": row.get("TimePeriod").get("Start"),
+                                    "time_period_end": row.get("TimePeriod").get("End"),
+                                    "metric_name": i,
+                                    "amount": j.get("Amount"),
+                                    "amount_unit": j.get("Unit"),
+                                    "service": k.get('Keys')[0],
+                                    "charge_type": d.get('RecordType'),
+                                    "linked_account": d.get('LinkedAccount'), # Adicionado
+                                }
+                            else:
+                                yield {
+                                    "time_period_start": row.get("TimePeriod").get("Start"),
+                                    "time_period_end": row.get("TimePeriod").get("End"),
+                                    "metric_name": i,
+                                    "amount": j.get("Amount"),
+                                    "amount_unit": j.get("Unit"),
+                                    "service": k.get('Keys')[0],
+                                    "charge_type": d.get('RecordType'),
+                                }
 
 
 class CostsByUsageTypeStream(AWSCostExplorerStream):
@@ -868,26 +893,50 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                 for k in row.get("Groups"):
                     for i, j in k.get("Metrics").items():
                         if self.config.get("tag_keys", None):
-                            yield {
-                                "time_period_start": row.get("TimePeriod").get("Start"),
-                                "time_period_end": row.get("TimePeriod").get("End"),
-                                "metric_name": i,
-                                "amount": j.get("Amount"),
-                                "amount_unit": j.get("Unit"),
-                                "usage_type": k.get('Keys')[0],
-                                "charge_type": d.get('RecordType'),
-                                "linked_account": d.get('LinkedAccount'), # Adicionado
-                                "tag_key": k.get('Keys')[1].split("$")[0],
-                                "tag_value": k.get('Keys')[1].split("$")[1],
-                            }
+                            if self.config.get("linked_account", []):
+                                yield {
+                                    "time_period_start": row.get("TimePeriod").get("Start"),
+                                    "time_period_end": row.get("TimePeriod").get("End"),
+                                    "metric_name": i,
+                                    "amount": j.get("Amount"),
+                                    "amount_unit": j.get("Unit"),
+                                    "usage_type": k.get('Keys')[0],
+                                    "charge_type": d.get('RecordType'),
+                                    "linked_account": d.get('LinkedAccount'), # Adicionado
+                                    "tag_key": k.get('Keys')[1].split("$")[0],
+                                    "tag_value": k.get('Keys')[1].split("$")[1],
+                                }
+                            else:
+                                yield {
+                                    "time_period_start": row.get("TimePeriod").get("Start"),
+                                    "time_period_end": row.get("TimePeriod").get("End"),
+                                    "metric_name": i,
+                                    "amount": j.get("Amount"),
+                                    "amount_unit": j.get("Unit"),
+                                    "usage_type": k.get('Keys')[0],
+                                    "charge_type": d.get('RecordType'),
+                                    "tag_key": k.get('Keys')[1].split("$")[0],
+                                    "tag_value": k.get('Keys')[1].split("$")[1],
+                                }
                         else:
-                            yield {
-                                "time_period_start": row.get("TimePeriod").get("Start"),
-                                "time_period_end": row.get("TimePeriod").get("End"),
-                                "metric_name": i,
-                                "amount": j.get("Amount"),
-                                "amount_unit": j.get("Unit"),
-                                "usage_type": k.get('Keys')[0],
-                                "charge_type": d.get('RecordType'),
-                                "linked_account": d.get('LinkedAccount') # Adicionado
-                            }
+                            if self.config.get("linked_account", []):
+                                yield {
+                                    "time_period_start": row.get("TimePeriod").get("Start"),
+                                    "time_period_end": row.get("TimePeriod").get("End"),
+                                    "metric_name": i,
+                                    "amount": j.get("Amount"),
+                                    "amount_unit": j.get("Unit"),
+                                    "usage_type": k.get('Keys')[0],
+                                    "charge_type": d.get('RecordType'),
+                                    "linked_account": d.get('LinkedAccount') # Adicionado
+                                }
+                            else:
+                                yield {
+                                    "time_period_start": row.get("TimePeriod").get("Start"),
+                                    "time_period_end": row.get("TimePeriod").get("End"),
+                                    "metric_name": i,
+                                    "amount": j.get("Amount"),
+                                    "amount_unit": j.get("Unit"),
+                                    "usage_type": k.get('Keys')[0],
+                                    "charge_type": d.get('RecordType')
+                                }
