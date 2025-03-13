@@ -81,6 +81,12 @@ class TapAWSCostExplorer(Tap):
             required=False,
             description="Which tag are returned in the query."
         ),
+        th.Property(
+            "linked_account",
+            th.ArrayType(th.StringType),
+            required=False,
+            description="Which account are returned in the query."
+        ),
     ).to_dict()
 
     def discover_streams(self) -> List[Stream]:

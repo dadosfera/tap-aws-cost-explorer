@@ -129,7 +129,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
 
         LOGGER.info(f'Start Date: {start_date_str}')
         tags_keys = self.config.get("tag_keys")
-        linked_accounts = self.config.get("linked_account", [])  # Garantindo que seja uma lista
+        linked_accounts = self.config.get("linked_account", None)  # Garantindo que seja uma lista
         
         for tag in tags_keys:
             for record_type in self.config.get("record_types"):
@@ -304,7 +304,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
         ) if self.get_bookmark() else start_date.strftime("%Y-%m-%d")
 
         LOGGER.info(f'Start Date: {start_date_str}')
-        linked_accounts = self.config.get("linked_account", [])
+        linked_accounts = self.config.get("linked_account", None)
 
         for record_type in self.config.get("record_types"):
             if linked_accounts:
@@ -463,7 +463,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
                 for k in row.get("Groups"):
                     for i, j in k.get("Metrics").items():
                         if self.config.get("tag_keys", None):
-                            if self.config.get("linked_account", []):
+                            if self.config.get("linked_account", None):
                                 yield {
                                     "time_period_start": row.get("TimePeriod").get("Start"),
                                     "time_period_end": row.get("TimePeriod").get("End"),
@@ -490,7 +490,7 @@ class CostsByServicesStream(AWSCostExplorerStream):
                                 }
 
                         else:
-                            if self.config.get("linked_account", []):
+                            if self.config.get("linked_account", None):
                                 yield {
                                     "time_period_start": row.get("TimePeriod").get("Start"),
                                     "time_period_end": row.get("TimePeriod").get("End"),
@@ -557,7 +557,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
 
         LOGGER.info(f'Start Date: {start_date_str}')
         tags_keys = self.config.get("tag_keys")
-        linked_accounts = self.config.get("linked_account", [])
+        linked_accounts = self.config.get("linked_account", None)
 
         for tag in tags_keys:
             for record_type in self.config.get("record_types"):
@@ -739,7 +739,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
         ) if self.get_bookmark() else start_date.strftime("%Y-%m-%d")
 
         LOGGER.info(f'Start Date: {start_date_str}')
-        linked_accounts = self.config.get("linked_account", [])
+        linked_accounts = self.config.get("linked_account", None)
 
         for record_type in self.config.get("record_types"):
             if linked_accounts:
@@ -893,7 +893,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                 for k in row.get("Groups"):
                     for i, j in k.get("Metrics").items():
                         if self.config.get("tag_keys", None):
-                            if self.config.get("linked_account", []):
+                            if self.config.get("linked_account", None):
                                 yield {
                                     "time_period_start": row.get("TimePeriod").get("Start"),
                                     "time_period_end": row.get("TimePeriod").get("End"),
@@ -919,7 +919,7 @@ class CostsByUsageTypeStream(AWSCostExplorerStream):
                                     "tag_value": k.get('Keys')[1].split("$")[1],
                                 }
                         else:
-                            if self.config.get("linked_account", []):
+                            if self.config.get("linked_account", None):
                                 yield {
                                     "time_period_start": row.get("TimePeriod").get("Start"),
                                     "time_period_end": row.get("TimePeriod").get("End"),
